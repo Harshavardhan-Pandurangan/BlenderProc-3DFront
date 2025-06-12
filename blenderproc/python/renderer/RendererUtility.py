@@ -257,7 +257,6 @@ def enable_depth_output(activate_antialiasing: bool, output_dir: Optional[str] =
         raise Exception(msg)
     GlobalStorage.add("depth_output_is_enabled", True)
 
-
     bpy.context.scene.render.use_compositing = True
     bpy.context.scene.use_nodes = True
 
@@ -269,15 +268,22 @@ def enable_depth_output(activate_antialiasing: bool, output_dir: Optional[str] =
     # Enable z-buffer pass
     bpy.context.view_layer.use_pass_z = True
 
+    # normalize the depth values to the range [0, 1]
+    normalize_node = tree.nodes.new("CompositorNodeNormalize")
+    normalize_node.location.x = 200
+    normalize_node.location.y = -200
+    links.new(render_layer_node.outputs["Depth"], normalize_node.inputs['Value'])
+    final_output = normalize_node.outputs['Value']
+
     # Build output node
     output_file = tree.nodes.new("CompositorNodeOutputFile")
     output_file.base_path = output_dir
     output_file.format.file_format = "OPEN_EXR"
     output_file.file_slots.values()[0].path = file_prefix
-
+    output_file.location.x = 600
+    output_file.location.y = -200
     # Feed the Z-Buffer output of the render layer to the input of the file IO layer
-    links.new(render_layer_node.outputs["Depth"], output_file.inputs['Image'])
-
+    links.new(final_output, output_file.inputs['Image'])
     Utility.add_output_entry({
         "key": output_key,
         "path": os.path.join(output_dir, file_prefix) + "%04d" + ".exr",
@@ -450,7 +456,7 @@ def map_file_format_to_file_ending(file_format: str) -> str:
         raise Exception("Unknown Image Type " + file_format)
 
 
-def render(output_dir: Optional[str] = None, file_prefix: str = "rgb_", output_key: Optional[str] = "colors",
+def render(output_dir, file_prefix: str = "rgb_", output_key: Optional[str] = "colors",
            load_keys: Optional[Set[str]] = None, return_data: bool = True,
            keys_with_alpha_channel: Optional[Set[str]] = None) -> Dict[str, Union[np.ndarray, List[np.ndarray]]]:
     """ Render all frames.
@@ -466,8 +472,7 @@ def render(output_dir: Optional[str] = None, file_prefix: str = "rgb_", output_k
     :param keys_with_alpha_channel: A set containing all keys whose alpha channels should be loaded.
     :return: dict of lists of raw renderer output. Keys can be 'distance', 'colors', 'normals'
     """
-    if output_dir is None:
-        output_dir = Utility.get_temporary_directory()
+    temp_dir = Utility.get_temporary_directory()
     if load_keys is None:
         load_keys = {'colors', 'distance', 'normals', 'diffuse', 'depth'}
         keys_with_alpha_channel = {'colors'} if bpy.context.scene.render.film_transparent else None
@@ -475,13 +480,15 @@ def render(output_dir: Optional[str] = None, file_prefix: str = "rgb_", output_k
     if output_key is not None:
         Utility.add_output_entry({
             "key": output_key,
-            "path": os.path.join(output_dir, file_prefix) + "%04d" +
+            "path": os.path.join(temp_dir, file_prefix) + "%04d" +
                     map_file_format_to_file_ending(bpy.context.scene.render.image_settings.file_format),
             "version": "2.0.0"
         })
         load_keys.add(output_key)
 
-    bpy.context.scene.render.filepath = os.path.join(output_dir, file_prefix)
+    bpy.context.scene.render.filepath = os.path.join(temp_dir, file_prefix)
+
+    print("Rendering started, writing output to: " + temp_dir, file_prefix)
 
     # Skip if there is nothing to render
     if bpy.context.scene.frame_end != bpy.context.scene.frame_start:
@@ -494,6 +501,25 @@ def render(output_dir: Optional[str] = None, file_prefix: str = "rgb_", output_k
         bpy.ops.render.render(animation=True, write_still=True)
         # Revert changes
         bpy.context.scene.frame_end += 1
+
+    print("Rendering finished, writing output to: " + temp_dir)
+
+    # copy the files to the output directory
+    import sys
+    # print the list of files in the output directory
+    if output_key is not None:
+        print("Output files in directory: " + temp_dir)
+        for file in os.listdir(temp_dir):
+            if file.startswith(file_prefix) and file.endswith(map_file_format_to_file_ending(
+                    bpy.context.scene.render.image_settings.file_format)):
+                print(file)
+            # copy the file to current working directory
+            if sys.platform == "win32":
+                os.system("mkdir " + output_dir)
+                os.system("copy " + os.path.join(temp_dir, file) + " " + output_dir)
+            else:
+                os.system("mkdir -p " + output_dir)
+                os.system("cp " + os.path.join(temp_dir, file) + " " + output_dir)
 
     return WriterUtility.load_registered_outputs(load_keys, keys_with_alpha_channel) if return_data else {}
 

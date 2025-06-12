@@ -294,7 +294,7 @@ class Utility:
     @staticmethod
     def get_nodes_created_in_func(nodes: List[bpy.types.Node], created_in_func: str) -> List[bpy.types.Node]:
         """ Returns all nodes which are created in the given function
-        
+
         :param nodes: list of nodes of the current material
         :param created_in_func: return all nodes created in the given function
         :return: The list of nodes with the given type.
@@ -506,7 +506,8 @@ class Utility:
         # this clipping is necessary to avoid that numbers below zero are than used in an uint16
         values = np.clip(values, 0, space_size_per_dimension)
         # Calculate the block indices per dimension
-        values /= block_length
+        # values /= block_length
+        values = values / block_length
         # Compute the global index of the block (corresponds to the three nested for loops inside generate_equidistant_values())
         values = values[:, :, 0] * num_splits_per_dimension * num_splits_per_dimension + values[:, :,1] * num_splits_per_dimension + values[:, :, 2]
         # Round the values, s.t. derivations are put back to their closest index.
@@ -561,7 +562,7 @@ class Utility:
     def get_registered_outputs() -> List[Dict[str, Any]]:
         """ Returns a list of outputs which were registered.
 
-        :return: A list of dicts containing all information registered for the outputs. 
+        :return: A list of dicts containing all information registered for the outputs.
         """
         outputs = []
         if GlobalStorage.is_in_storage("output"):

@@ -11,12 +11,12 @@ from blenderproc.python.utility.SetupUtility import SetupUtility
 from blenderproc.python.utility.InstallUtility import InstallUtility
 
 def cli():
-    
+
     options = {
         "vis": {
-            'hdf5': "Visualizes the content of one or multiple .hdf5 files.", 
+            'hdf5': "Visualizes the content of one or multiple .hdf5 files.",
             'coco': "Visualizes the annotations written in coco format."
-            }, 
+            },
         "extract": {
             'hdf5': "Extracts images out of an hdf5 file into separate image files."
             },
@@ -29,11 +29,11 @@ def cli():
             'scenenet': "Downloads the scenenet dataset."
             },
         "pip": {
-            'install': "Installs package in the Blender python environment", 
+            'install': "Installs package in the Blender python environment",
             'uninstall': "Uninstalls package in the Blender python environment"
             },
     }
-    
+
     parser = argparse.ArgumentParser(description="BlenderProc: A procedural Blender pipeline for photorealistic image generation.", formatter_class=argparse.RawTextHelpFormatter)
     subparsers = parser.add_subparsers(dest='mode', help="Select a BlenderProc command to run:")
 
@@ -48,15 +48,15 @@ def cli():
     sub_parser_vis = parser_vis.add_subparsers(dest='vis_mode')
     for cmd, help in options['vis'].items():
         sub_parser_vis.add_parser(cmd, help=help, add_help=False)
-        
+
     sub_parser_download = parser_download.add_subparsers(dest='download_mode')
     for cmd, help in options['download'].items():
         sub_parser_download.add_parser(cmd, help=help, add_help=False)
-        
+
     sub_parser_extract = parser_extract.add_subparsers(dest='extract_mode')
     for cmd, help in options['extract'].items():
         sub_parser_extract.add_parser(cmd, help=help, add_help=False)
-    
+
     format_dict = lambda d : '\n'.join("{}: {}".format(key, value) for key, value in d.items())
     parser_pip.add_argument('pip_mode', choices=options['pip'], help=format_dict(options['pip']))
     parser_pip.add_argument('pip_packages', metavar='pip_packages', nargs='*', help='A list of pip packages that should be installed/uninstalled. Packages versions can be determined via the `==` notation.')
@@ -140,8 +140,8 @@ def cli():
                 pass
             p.wait()
 
-        # Clean up
-        clean_temp_dir()
+        # # Clean up
+        # clean_temp_dir()
 
         exit(p.returncode)
     # Import the required entry point

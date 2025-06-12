@@ -101,7 +101,8 @@ if __name__ == '__main__':
     if args.append_to_existing_output:
         n_cameras = n_cameras - existing_n_renderings
 
-    try:
+    # try:
+    if 1 < 2:  # for debugging purposes
         with time_limit(600): # per scene generation would not exceeds X seconds.
             start_time = time()
 
@@ -140,16 +141,22 @@ if __name__ == '__main__':
                 label_mapping=mapping,
                 model_id_to_label=model_id_to_label)
 
+            print('Loaded %d objects.' % len(loaded_objects))
+
             # -------------------------------------------------------------------------
             #          Sample materials
             # -------------------------------------------------------------------------
+            print('Sampling materials...')
             cc_materials = bproc.loader.load_ccmaterials(args.cc_material_folder, ["Bricks", "Wood", "Carpet", "Tile", "Marble"])
+            print('Loaded %d CC materials.' % len(cc_materials))
 
             floors = bproc.filter.by_attr(loaded_objects, "name", "Floor.*", regex=True)
             for floor in floors:
                 # For each material of the object
                 for i in range(len(floor.get_materials())):
                     floor.set_material(i, random.choice(cc_materials))
+
+            print('Set materials for %d floors.' % len(floors))
 
             baseboards_and_doors = bproc.filter.by_attr(loaded_objects, "name", "Baseboard.*|Door.*", regex=True)
             wood_floor_materials = bproc.filter.by_cp(cc_materials, "asset_name", "WoodFloor.*", regex=True)
@@ -231,29 +238,44 @@ if __name__ == '__main__':
                         bproc.camera.add_camera_pose(cam2world_matrix)
                         cam_Ts.append(cam2world_matrix)
 
+            print('Sampled %d camera poses.' % len(cam_Ts))
+
             # render the whole pipeline
             # bproc.renderer.enable_normals_output()
             bproc.renderer.enable_depth_output(activate_antialiasing=False)
-            data = bproc.renderer.render()
+            print('Rendering %d images.' % n_cameras)
+            data = bproc.renderer.render(return_data=True, output_dir=str(scene_output_folder))
+            sys.exit(0)
+            # data = bproc.renderer.render()
+            print(data.keys())
             default_values = {"location": [0, 0, 0], "cp_inst_mark": '', "cp_uid": '', "cp_jid": '', "cp_room_id": ""}
             data.update(bproc.renderer.render_segmap(
                 map_by=["instance", "class", "cp_uid", "cp_jid", "cp_inst_mark", "cp_room_id", "location"],
                 default_values=default_values))
 
-            # write camera extrinsics
-            data['cam_Ts'] = cam_Ts
-            # write the data to a .hdf5 container
-            bproc.writer.write_hdf5(str(scene_output_folder), data,
-                                    append_to_existing_output=args.append_to_existing_output)
-            print('Time elapsed: %f.' % (time()-start_time))
+            print('Rendered %d images.' % len(data['colors']))
+            print('Rendered %d depth maps.' % len(data['depth']))
+            # print('Rendered %d segmentation maps.' % len(data['segmentation_maps']))
+            print('Rendered %d camera poses.' % len(cam_Ts))
 
-    except TimeoutException as e:
-        print('Time is out: %s.' % scene_name)
-        with open(failed_scene_name_file, 'a') as file:
-            file.write(scene_name + "\n")
-        sys.exit(0)
-    except Exception as e:
-        print('Failed scene name: %s.' % scene_name)
-        with open(failed_scene_name_file, 'a') as file:
-            file.write(scene_name + "\n")
-        sys.exit(0)
+            print('So fuck up is only in the hdf5 container')
+
+            # # write camera extrinsics
+            # data['cam_Ts'] = cam_Ts
+            # print('1')
+            # # write the data to a .hdf5 container
+            # bproc.writer.write_hdf5(str(scene_output_folder), data,
+            #                         append_to_existing_output=args.append_to_existing_output)
+            # print('2')
+            # print('Time elapsed: %f.' % (time()-start_time))
+
+    # except TimeoutException as e:
+    #     print('Time is out: %s.' % scene_name)
+    #     # with open(failed_scene_name_file, 'a') as file:
+    #     #     file.write(scene_name + "\n")
+    #     sys.exit(0)
+    # except Exception as e:
+    #     print('Failed scene name: %s.' % scene_name)
+    #     # with open(failed_scene_name_file, 'a') as file:
+    #     #     file.write(scene_name + "\n")
+    #     sys.exit(0)
